@@ -1,0 +1,9 @@
+[package]
+name = "libsodium-ffi"
+version = "0.1.0"
+edition = "2021"
+description = "Bindings to libsodium library"
+
+[dependencies]
+hex = "0.4.3"
+libsodium-sys = { path = "libsodium-sys", version = "0.1.0" }

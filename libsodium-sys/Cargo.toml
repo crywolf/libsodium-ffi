@@ -1,0 +1,14 @@
+[package]
+name = "libsodium-sys"
+version = "0.1.0"
+edition = "2021"
+links = "sodium" # This manifest states that the package links to the libsodium native library
+build = "build.rs"
+description = "Native bindings to the libsodium library"
+
+[build-dependencies]
+bindgen = "0.72.1"
+pkg-config = "0.3.32"
+
+[dependencies]
+pkg-config = "0.3.32"
