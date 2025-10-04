@@ -2,7 +2,9 @@
     "cSpell.words": [
         "generichash",
         "KEYBYTES",
+        "keygen",
         "keylen",
-        "libsodium"
+        "libsodium",
+        "Uninit"
     ]
 }

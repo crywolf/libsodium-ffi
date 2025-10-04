@@ -14,6 +14,7 @@ fn main() {
         .header("wrapper.h")
         .allowlist_function("sodium_init")
         .allowlist_function("crypto_generichash")
+        .allowlist_function("crypto_generichash_keygen")
         .allowlist_var("crypto_generichash_.*")
         // Tell cargo to invalidate the built crate whenever any of the included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
