@@ -30,16 +30,16 @@ impl Sodium {
         unsafe { buf.assume_init() }.to_vec()
     }
 
-    /// Puts a fingerprint of the message `input` into `output`. The output size can be chosen by the application.
+    /// Returns a fingerprint of the message `input`. The output size can be chosen by the application (generic parameter `L`).
     /// The minimum recommended `output` size is [BYTES].
-    pub fn crypto_generichash(
+    pub fn crypto_generichash<const L: usize>(
         &self,
         input: &[u8],
         key: Option<&[u8]>,
-        output: &mut [u8],
-    ) -> Result<(), i32> {
-        assert!(output.len() >= ffi::crypto_generichash_BYTES_MIN as usize);
-        assert!(output.len() <= ffi::crypto_generichash_BYTES_MAX as usize);
+    ) -> Result<[u8; L], i32> {
+        let mut buf = MaybeUninit::<[u8; L]>::uninit();
+        assert!(L >= ffi::crypto_generichash_BYTES_MIN as usize);
+        assert!(L <= ffi::crypto_generichash_BYTES_MAX as usize);
 
         let (key, keylen) = if let Some(key) = key {
             assert!(key.len() >= ffi::crypto_generichash_KEYBYTES_MIN as usize);
@@ -51,8 +51,8 @@ impl Sodium {
 
         let res = unsafe {
             ffi::crypto_generichash(
-                output.as_mut_ptr(),
-                output.len(),
+                buf.as_mut_ptr() as *mut u8,
+                L,
                 input.as_ptr(),
                 input.len() as u64,
                 key,
@@ -61,10 +61,11 @@ impl Sodium {
         };
 
         if res < 0 {
-            Err(res)
-        } else {
-            Ok(())
+            return Err(res);
         }
+
+        let v = unsafe { buf.assume_init() };
+        Ok(v)
     }
 
     /// Returns initialized [State] object providing streaming API
@@ -162,26 +163,25 @@ mod tests {
     #[test]
     fn test_crypto_generichash() {
         let s = Sodium::new().unwrap();
-        let mut output = [0; BYTES];
-
-        let res = s.crypto_generichash(b"Some data to hash", None, &mut output);
+        let res = s.crypto_generichash::<BYTES>(b"Some data to hash", None);
         assert!(res.is_ok());
-        let hash = hex::encode(output);
+
+        let hash = hex::encode(res.unwrap());
+        assert_eq!(hash.len(), BYTES * 2);
         assert_eq!(
             hash,
             "026da8b2167b96c69190553d962929b375406b913d98239a6c5587ec30f6a42b"
         );
 
-        let res = s.crypto_generichash(
-            b"Arbitrary data to hash",
-            Some(b"random key long enough"),
-            &mut output,
-        );
+        let res =
+            s.crypto_generichash::<64>(b"Arbitrary data to hash", Some(b"random key long enough"));
         assert!(res.is_ok());
-        let hash = hex::encode(output);
+
+        let hash = hex::encode(res.unwrap());
+        assert_eq!(hash.len(), 64 * 2);
         assert_eq!(
             hash,
-            "023dd0b5ee086a5ad1ff1a0df2288bfd8297066914dc3c944c352ed79413af5f"
+            "b97be52aa6930003fa8adc3417ac014525d0116b5c105e3831d3ad9240c1af35ae99b8fefc6d4f00178c14d34036f9d194dd9690fa809bcbdf9d2cf175da2155"
         );
     }
 
