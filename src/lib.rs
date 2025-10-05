@@ -4,11 +4,11 @@ use libsodium_sys::ffi;
 
 /// The minimum recommended output size
 pub const BYTES: usize = ffi::crypto_generichash_BYTES as usize;
-
 /// The recommended key size
 pub const KEYBYTES: usize = ffi::crypto_generichash_KEYBYTES as usize;
 
 #[non_exhaustive] // forces user to use constructor (ie. `new` method)
+/// Sodium library object
 pub struct Sodium;
 
 impl Sodium {
@@ -22,7 +22,7 @@ impl Sodium {
         }
     }
 
-    /// Creates a key k of the recommended length [KEYBYTES]
+    /// Creates a key of the recommended length [KEYBYTES]
     pub fn crypto_generichash_keygen(&self) -> Vec<u8> {
         let mut buf = MaybeUninit::<[u8; KEYBYTES]>::uninit();
 
@@ -31,7 +31,7 @@ impl Sodium {
     }
 
     /// Puts a fingerprint of the message `input` into `output`. The output size can be chosen by the application.
-    /// The minimum recommended output size is [BYTES].
+    /// The minimum recommended `output` size is [BYTES].
     pub fn crypto_generichash(
         &self,
         input: &[u8],
@@ -65,6 +65,81 @@ impl Sodium {
         } else {
             Ok(())
         }
+    }
+
+    /// Returns initialized [State] object providing streaming API
+    pub fn crypto_generichash_init(self, key: Option<&[u8]>, outlen: usize) -> Result<State, i32> {
+        let (key, keylen) = if let Some(key) = key {
+            assert!(key.len() >= ffi::crypto_generichash_KEYBYTES_MIN as usize);
+            assert!(key.len() <= ffi::crypto_generichash_KEYBYTES_MAX as usize);
+            (key.as_ptr(), key.len())
+        } else {
+            (std::ptr::null(), 0)
+        };
+
+        let mut s = State::new(outlen);
+
+        let res = unsafe {
+            ffi::crypto_generichash_init(s.state.0.as_mut_ptr() as _, key, keylen, s.outlen)
+        };
+        if res < 0 {
+            Err(res)
+        } else {
+            Ok(s)
+        }
+    }
+}
+
+#[derive(Default)]
+#[non_exhaustive]
+/// Struct providing streaming API
+pub struct State {
+    state: ffi::crypto_generichash_state,
+    outlen: usize,
+}
+
+impl State {
+    fn new(outlen: usize) -> Self {
+        assert!(outlen >= ffi::crypto_generichash_BYTES_MIN as usize);
+        assert!(outlen <= ffi::crypto_generichash_BYTES_MAX as usize);
+
+        Self {
+            outlen,
+            ..Default::default()
+        }
+    }
+
+    /// Each chunk of the complete message can then be sequentially processed by calling
+    pub fn crypto_generichash_update(&mut self, input: &[u8]) -> Result<(), i32> {
+        let res = unsafe {
+            ffi::crypto_generichash_update(
+                self.state.0.as_mut_ptr() as _,
+                input.as_ptr(),
+                input.len() as u64,
+            )
+        };
+        if res < 0 {
+            Err(res)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Completes the operation and returns the final fingerprint
+    pub fn crypto_generichash_finalize(&mut self) -> Result<Vec<u8>, i32> {
+        let mut buf = vec![0; self.outlen];
+        let res = unsafe {
+            ffi::crypto_generichash_final(
+                self.state.0.as_mut_ptr() as _,
+                buf.as_mut_ptr(),
+                self.outlen,
+            )
+        };
+        if res < 0 {
+            return Err(res);
+        }
+
+        Ok(buf)
     }
 }
 
@@ -107,6 +182,30 @@ mod tests {
         assert_eq!(
             hash,
             "023dd0b5ee086a5ad1ff1a0df2288bfd8297066914dc3c944c352ed79413af5f"
+        );
+    }
+
+    #[test]
+    fn test_crypto_generichash_streaming_api() {
+        let s = Sodium::new().unwrap();
+        let state = s.crypto_generichash_init(None, BYTES);
+        assert!(state.is_ok());
+
+        let mut s = state.unwrap();
+        s.crypto_generichash_update(b"Arbitrary data to hash")
+            .unwrap();
+
+        s.crypto_generichash_update(b" with some ome other chunk data to hash")
+            .unwrap();
+
+        let out = s.crypto_generichash_finalize().unwrap();
+
+        let hash = hex::encode(out);
+
+        assert_eq!(hash.len(), BYTES * 2);
+        assert_eq!(
+            hash,
+            "cbda1fd8764b060084d8a2edf8805e14623c1076297daae77abe5dc913b54d67"
         );
     }
 }

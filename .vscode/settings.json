@@ -5,6 +5,7 @@
         "keygen",
         "keylen",
         "libsodium",
+        "outlen",
         "Uninit"
     ]
 }

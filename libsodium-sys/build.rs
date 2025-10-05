@@ -15,7 +15,11 @@ fn main() {
         .allowlist_function("sodium_init")
         .allowlist_function("crypto_generichash")
         .allowlist_function("crypto_generichash_keygen")
+        .allowlist_function("crypto_generichash_init")
+        .allowlist_function("crypto_generichash_update")
+        .allowlist_function("crypto_generichash_final")
         .allowlist_var("crypto_generichash_.*")
+        .opaque_type("crypto_generichash_state")
         // Tell cargo to invalidate the built crate whenever any of the included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         // Finish the builder and generate the bindings.
