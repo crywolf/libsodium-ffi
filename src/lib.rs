@@ -22,7 +22,7 @@ impl Sodium {
         }
     }
 
-    /// Creates a key of the recommended length [KEYBYTES]
+    /// Creates a key of the recommended length [`KEYBYTES`]
     pub fn crypto_generichash_keygen(&self) -> Vec<u8> {
         let mut buf = MaybeUninit::<[u8; KEYBYTES]>::uninit();
 
@@ -31,7 +31,7 @@ impl Sodium {
     }
 
     /// Returns a fingerprint of the message `input`. The output size can be chosen by the application (generic parameter `L`).
-    /// The minimum recommended `output` size is [BYTES].
+    /// The minimum recommended `output` size is [`BYTES`].
     pub fn crypto_generichash<const L: usize>(
         &self,
         input: &[u8],
@@ -64,12 +64,15 @@ impl Sodium {
             return Err(res);
         }
 
-        let v = unsafe { buf.assume_init() };
-        Ok(v)
+        let out = unsafe { buf.assume_init() };
+        Ok(out)
     }
 
-    /// Returns initialized [State] object providing streaming API
-    pub fn crypto_generichash_init(self, key: Option<&[u8]>, outlen: usize) -> Result<State, i32> {
+    /// Returns initialized [`State`] object providing streaming API
+    pub fn crypto_generichash_init<const L: usize>(
+        self,
+        key: Option<&[u8]>,
+    ) -> Result<State<L>, i32> {
         let (key, keylen) = if let Some(key) = key {
             assert!(key.len() >= ffi::crypto_generichash_KEYBYTES_MIN as usize);
             assert!(key.len() <= ffi::crypto_generichash_KEYBYTES_MAX as usize);
@@ -78,11 +81,10 @@ impl Sodium {
             (std::ptr::null(), 0)
         };
 
-        let mut s = State::new(outlen);
+        let mut s = State::new();
 
-        let res = unsafe {
-            ffi::crypto_generichash_init(s.state.0.as_mut_ptr() as _, key, keylen, s.outlen)
-        };
+        let res =
+            unsafe { ffi::crypto_generichash_init(s.state.0.as_mut_ptr() as _, key, keylen, L) };
         if res < 0 {
             Err(res)
         } else {
@@ -93,21 +95,17 @@ impl Sodium {
 
 #[derive(Default)]
 #[non_exhaustive]
-/// Struct providing streaming API
-pub struct State {
+/// Struct providing streaming API. Created by calling [`Sodium::crypto_generichash_init`]
+pub struct State<const L: usize> {
     state: ffi::crypto_generichash_state,
-    outlen: usize,
 }
 
-impl State {
-    fn new(outlen: usize) -> Self {
-        assert!(outlen >= ffi::crypto_generichash_BYTES_MIN as usize);
-        assert!(outlen <= ffi::crypto_generichash_BYTES_MAX as usize);
+impl<const L: usize> State<L> {
+    fn new() -> Self {
+        assert!(L >= ffi::crypto_generichash_BYTES_MIN as usize);
+        assert!(L <= ffi::crypto_generichash_BYTES_MAX as usize);
 
-        Self {
-            outlen,
-            ..Default::default()
-        }
+        Self::default()
     }
 
     /// Each chunk of the complete message can then be sequentially processed by calling
@@ -127,20 +125,21 @@ impl State {
     }
 
     /// Completes the operation and returns the final fingerprint
-    pub fn crypto_generichash_finalize(&mut self) -> Result<Vec<u8>, i32> {
-        let mut buf = vec![0; self.outlen];
+    pub fn crypto_generichash_finalize(&mut self) -> Result<[u8; L], i32> {
+        let mut buf = MaybeUninit::<[u8; L]>::uninit();
         let res = unsafe {
             ffi::crypto_generichash_final(
                 self.state.0.as_mut_ptr() as _,
-                buf.as_mut_ptr(),
-                self.outlen,
+                buf.as_mut_ptr() as *mut u8,
+                L,
             )
         };
         if res < 0 {
             return Err(res);
         }
 
-        Ok(buf)
+        let out = unsafe { buf.assume_init() };
+        Ok(out)
     }
 }
 
@@ -188,7 +187,7 @@ mod tests {
     #[test]
     fn test_crypto_generichash_streaming_api() {
         let s = Sodium::new().unwrap();
-        let state = s.crypto_generichash_init(None, BYTES);
+        let state = s.crypto_generichash_init::<BYTES>(None);
         assert!(state.is_ok());
 
         let mut s = state.unwrap();

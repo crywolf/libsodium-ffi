@@ -38,7 +38,7 @@ fn test_crypto_generichash_with_key() {
 fn test_crypto_generichash_streaming_api() {
     let s = Sodium::new().unwrap();
     let key = b"some random key long enough";
-    let state = s.crypto_generichash_init(Some(key), BYTES);
+    let state = s.crypto_generichash_init::<BYTES>(Some(key));
     assert!(state.is_ok());
 
     let mut s = state.unwrap();
