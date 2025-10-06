@@ -11,7 +11,6 @@ fn test_crypto_generichash_keygen() {
 fn test_crypto_generichash_without_key() {
     let s = Sodium::new().unwrap();
     let res = s.crypto_generichash::<BYTES>(b"Arbitrary data to hash", None);
-    assert!(res.is_ok());
 
     let hash = hex::encode(res.unwrap());
     assert_eq!(
@@ -25,7 +24,6 @@ fn test_crypto_generichash_with_key() {
     let s = Sodium::new().unwrap();
     let key = b"some random key long enough";
     let res = s.crypto_generichash::<BYTES>(b"Arbitrary data to hash", Some(key));
-    assert!(res.is_ok());
 
     let hash = hex::encode(res.unwrap());
     assert_eq!(
@@ -39,7 +37,6 @@ fn test_crypto_generichash_streaming_api() {
     let s = Sodium::new().unwrap();
     let key = b"some random key long enough";
     let state = s.crypto_generichash_init::<BYTES>(Some(key));
-    assert!(state.is_ok());
 
     let mut s = state.unwrap();
     s.crypto_generichash_update(b"Arbitrary data to hash")

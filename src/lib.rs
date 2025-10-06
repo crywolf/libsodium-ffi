@@ -36,13 +36,13 @@ impl Sodium {
         &self,
         input: &[u8],
         key: Option<&[u8]>,
-    ) -> Result<[u8; L], i32> {
-        validate_output_size(L);
+    ) -> Result<[u8; L], String> {
+        validate_output_size(L)?;
 
         let mut buf = MaybeUninit::<[u8; L]>::uninit();
 
         let (key, keylen) = if let Some(key) = key {
-            validate_key_size(key.len());
+            validate_key_size(key.len())?;
             (key.as_ptr(), key.len())
         } else {
             (std::ptr::null(), 0)
@@ -60,7 +60,7 @@ impl Sodium {
         };
 
         if res < 0 {
-            return Err(res);
+            return Err(format!("libsodium failed with error code {}", res));
         }
 
         let out = unsafe { buf.assume_init() };
@@ -71,20 +71,20 @@ impl Sodium {
     pub fn crypto_generichash_init<const L: usize>(
         self,
         key: Option<&[u8]>,
-    ) -> Result<State<L>, i32> {
+    ) -> Result<State<L>, String> {
         let (key, keylen) = if let Some(key) = key {
-            validate_key_size(key.len());
+            validate_key_size(key.len())?;
             (key.as_ptr(), key.len())
         } else {
             (std::ptr::null(), 0)
         };
 
-        let mut s = State::new();
+        let mut s = State::new()?;
 
         let res =
             unsafe { ffi::crypto_generichash_init(s.state.0.as_mut_ptr() as _, key, keylen, L) };
         if res < 0 {
-            Err(res)
+            Err(format!("libsodium call failed with code {}", res))
         } else {
             Ok(s)
         }
@@ -99,13 +99,13 @@ pub struct State<const L: usize> {
 }
 
 impl<const L: usize> State<L> {
-    fn new() -> Self {
-        validate_output_size(L);
-        Self::default()
+    fn new() -> Result<Self, String> {
+        validate_output_size(L)?;
+        Ok(Self::default())
     }
 
     /// Each chunk of the complete message can then be sequentially processed by calling
-    pub fn crypto_generichash_update(&mut self, input: &[u8]) -> Result<(), i32> {
+    pub fn crypto_generichash_update(&mut self, input: &[u8]) -> Result<(), String> {
         let res = unsafe {
             ffi::crypto_generichash_update(
                 self.state.0.as_mut_ptr() as _,
@@ -114,14 +114,14 @@ impl<const L: usize> State<L> {
             )
         };
         if res < 0 {
-            Err(res)
+            Err(format!("libsodium call failed with code {}", res))
         } else {
             Ok(())
         }
     }
 
     /// Completes the operation and returns the final fingerprint
-    pub fn crypto_generichash_finalize(&mut self) -> Result<[u8; L], i32> {
+    pub fn crypto_generichash_finalize(&mut self) -> Result<[u8; L], String> {
         let mut buf = MaybeUninit::<[u8; L]>::uninit();
         let res = unsafe {
             ffi::crypto_generichash_final(
@@ -131,7 +131,7 @@ impl<const L: usize> State<L> {
             )
         };
         if res < 0 {
-            return Err(res);
+            return Err(format!("libsodium call failed with code {}", res));
         }
 
         let out = unsafe { buf.assume_init() };
@@ -139,34 +139,42 @@ impl<const L: usize> State<L> {
     }
 }
 
-fn validate_key_size(keylen: usize) {
-    assert!(
-        keylen >= ffi::crypto_generichash_KEYBYTES_MIN as usize,
-        "Minimum key size is {} bytes, provided key has {} bytes",
-        ffi::crypto_generichash_KEYBYTES_MIN,
-        keylen
-    );
-    assert!(
-        keylen <= ffi::crypto_generichash_KEYBYTES_MAX as usize,
-        "Maximum key size is {} bytes, provided key has {} bytes",
-        ffi::crypto_generichash_KEYBYTES_MAX,
-        keylen
-    );
+fn validate_key_size(keylen: usize) -> Result<(), String> {
+    if keylen < ffi::crypto_generichash_KEYBYTES_MIN as usize {
+        return Err(format!(
+            "Minimum key size is {} bytes, provided key has {} bytes",
+            ffi::crypto_generichash_KEYBYTES_MIN,
+            keylen
+        ));
+    }
+    if keylen > ffi::crypto_generichash_KEYBYTES_MAX as usize {
+        return Err(format!(
+            "Maximum key size is {} bytes, provided key has {} bytes",
+            ffi::crypto_generichash_KEYBYTES_MAX,
+            keylen
+        ));
+    }
+
+    Ok(())
 }
 
-fn validate_output_size(outlen: usize) {
-    assert!(
-        outlen >= ffi::crypto_generichash_BYTES_MIN as usize,
-        "Minimum output size is {} bytes, requested size is {} bytes",
-        ffi::crypto_generichash_BYTES_MIN,
-        outlen
-    );
-    assert!(
-        outlen <= ffi::crypto_generichash_BYTES_MAX as usize,
-        "Maximum output size is {} bytes, requested size is {} bytes",
-        ffi::crypto_generichash_BYTES_MAX,
-        outlen
-    );
+fn validate_output_size(outlen: usize) -> Result<(), String> {
+    if outlen < ffi::crypto_generichash_BYTES_MIN as usize {
+        return Err(format!(
+            "Minimum output size is {} bytes, requested size is {} bytes",
+            ffi::crypto_generichash_BYTES_MIN,
+            outlen
+        ));
+    }
+    if outlen > ffi::crypto_generichash_BYTES_MAX as usize {
+        return Err(format!(
+            "Maximum output size is {} bytes, requested size is {} bytes",
+            ffi::crypto_generichash_BYTES_MAX,
+            outlen
+        ));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -189,7 +197,6 @@ mod tests {
     fn test_crypto_generichash() {
         let s = Sodium::new().unwrap();
         let res = s.crypto_generichash::<BYTES>(b"Some data to hash", None);
-        assert!(res.is_ok());
 
         let hash = hex::encode(res.unwrap());
         assert_eq!(hash.len(), BYTES * 2);
@@ -200,7 +207,6 @@ mod tests {
 
         let res =
             s.crypto_generichash::<64>(b"Arbitrary data to hash", Some(b"random key long enough"));
-        assert!(res.is_ok());
 
         let hash = hex::encode(res.unwrap());
         assert_eq!(hash.len(), 64 * 2);
@@ -214,7 +220,6 @@ mod tests {
     fn test_crypto_generichash_streaming_api() {
         let s = Sodium::new().unwrap();
         let state = s.crypto_generichash_init::<BYTES>(None);
-        assert!(state.is_ok());
 
         let mut s = state.unwrap();
         s.crypto_generichash_update(b"Arbitrary data to hash")
