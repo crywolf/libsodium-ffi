@@ -7,8 +7,8 @@ pub const BYTES: usize = ffi::crypto_generichash_BYTES as usize;
 /// The recommended key size
 pub const KEYBYTES: usize = ffi::crypto_generichash_KEYBYTES as usize;
 
-#[non_exhaustive] // forces user to use constructor (ie. `new` method)
 /// Sodium library object
+#[non_exhaustive] // forces user to use constructor (ie. `new` method)
 pub struct Sodium;
 
 impl Sodium {
@@ -37,13 +37,12 @@ impl Sodium {
         input: &[u8],
         key: Option<&[u8]>,
     ) -> Result<[u8; L], i32> {
+        validate_output_size(L);
+
         let mut buf = MaybeUninit::<[u8; L]>::uninit();
-        assert!(L >= ffi::crypto_generichash_BYTES_MIN as usize);
-        assert!(L <= ffi::crypto_generichash_BYTES_MAX as usize);
 
         let (key, keylen) = if let Some(key) = key {
-            assert!(key.len() >= ffi::crypto_generichash_KEYBYTES_MIN as usize);
-            assert!(key.len() <= ffi::crypto_generichash_KEYBYTES_MAX as usize);
+            validate_key_size(key.len());
             (key.as_ptr(), key.len())
         } else {
             (std::ptr::null(), 0)
@@ -74,8 +73,7 @@ impl Sodium {
         key: Option<&[u8]>,
     ) -> Result<State<L>, i32> {
         let (key, keylen) = if let Some(key) = key {
-            assert!(key.len() >= ffi::crypto_generichash_KEYBYTES_MIN as usize);
-            assert!(key.len() <= ffi::crypto_generichash_KEYBYTES_MAX as usize);
+            validate_key_size(key.len());
             (key.as_ptr(), key.len())
         } else {
             (std::ptr::null(), 0)
@@ -93,18 +91,16 @@ impl Sodium {
     }
 }
 
+/// Struct providing streaming API. Created by calling [`Sodium::crypto_generichash_init`]
 #[derive(Default)]
 #[non_exhaustive]
-/// Struct providing streaming API. Created by calling [`Sodium::crypto_generichash_init`]
 pub struct State<const L: usize> {
     state: ffi::crypto_generichash_state,
 }
 
 impl<const L: usize> State<L> {
     fn new() -> Self {
-        assert!(L >= ffi::crypto_generichash_BYTES_MIN as usize);
-        assert!(L <= ffi::crypto_generichash_BYTES_MAX as usize);
-
+        validate_output_size(L);
         Self::default()
     }
 
@@ -141,6 +137,36 @@ impl<const L: usize> State<L> {
         let out = unsafe { buf.assume_init() };
         Ok(out)
     }
+}
+
+fn validate_key_size(keylen: usize) {
+    assert!(
+        keylen >= ffi::crypto_generichash_KEYBYTES_MIN as usize,
+        "Minimum key size is {} bytes, provided key has {} bytes",
+        ffi::crypto_generichash_KEYBYTES_MIN,
+        keylen
+    );
+    assert!(
+        keylen <= ffi::crypto_generichash_KEYBYTES_MAX as usize,
+        "Maximum key size is {} bytes, provided key has {} bytes",
+        ffi::crypto_generichash_KEYBYTES_MAX,
+        keylen
+    );
+}
+
+fn validate_output_size(outlen: usize) {
+    assert!(
+        outlen >= ffi::crypto_generichash_BYTES_MIN as usize,
+        "Minimum output size is {} bytes, requested size is {} bytes",
+        ffi::crypto_generichash_BYTES_MIN,
+        outlen
+    );
+    assert!(
+        outlen <= ffi::crypto_generichash_BYTES_MAX as usize,
+        "Maximum output size is {} bytes, requested size is {} bytes",
+        ffi::crypto_generichash_BYTES_MAX,
+        outlen
+    );
 }
 
 #[cfg(test)]
