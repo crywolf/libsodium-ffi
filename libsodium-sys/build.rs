@@ -2,6 +2,8 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+    let cargo_manifest_dir = env::var_os("CARGO_MANIFEST_DIR").unwrap();
+
     pkg_config::Config::new()
         .print_system_libs(false)
         .atleast_version("1.0.20")
@@ -27,8 +29,8 @@ fn main() {
         // Unwrap the Result and panic on failure.
         .expect("Unable to generate bindings");
 
-    // Write the bindings to the $OUT_DIR/bindings.rs file.
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    // Write the bindings to the 'src' directory (so they can be committed)
+    let out_path = PathBuf::from(cargo_manifest_dir).join("src");
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
