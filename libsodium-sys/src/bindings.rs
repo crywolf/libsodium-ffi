@@ -10,6 +10,15 @@ impl<T: Copy + Default, const N: usize> Default for __BindgenOpaqueArray<T, N> {
         Self([<T as Default>::default(); N])
     }
 }
+pub const crypto_auth_hmacsha512_BYTES: u32 = 64;
+pub const crypto_auth_hmacsha512_KEYBYTES: u32 = 32;
+pub const crypto_auth_hmacsha512256_BYTES: u32 = 32;
+pub const crypto_auth_hmacsha512256_KEYBYTES: u32 = 32;
+pub const crypto_auth_BYTES: u32 = 32;
+pub const crypto_auth_KEYBYTES: u32 = 32;
+pub const crypto_auth_PRIMITIVE: &[u8; 14] = b"hmacsha512256\0";
+pub const crypto_auth_hmacsha256_BYTES: u32 = 32;
+pub const crypto_auth_hmacsha256_KEYBYTES: u32 = 32;
 pub const crypto_generichash_blake2b_BYTES_MIN: u32 = 16;
 pub const crypto_generichash_blake2b_BYTES_MAX: u32 = 64;
 pub const crypto_generichash_blake2b_BYTES: u32 = 32;
@@ -27,6 +36,25 @@ pub const crypto_generichash_KEYBYTES: u32 = 32;
 pub const crypto_generichash_PRIMITIVE: &[u8; 8] = b"blake2b\0";
 extern "C" {
     pub fn sodium_init() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn crypto_auth(
+        out: *mut ::std::os::raw::c_uchar,
+        in_: *const ::std::os::raw::c_uchar,
+        inlen: ::std::os::raw::c_ulonglong,
+        k: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn crypto_auth_verify(
+        h: *const ::std::os::raw::c_uchar,
+        in_: *const ::std::os::raw::c_uchar,
+        inlen: ::std::os::raw::c_ulonglong,
+        k: *const ::std::os::raw::c_uchar,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn crypto_auth_keygen(k: *mut ::std::os::raw::c_uchar);
 }
 pub type crypto_generichash_state = __BindgenOpaqueArray<u8, 384usize>;
 extern "C" {

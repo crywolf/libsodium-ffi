@@ -1,3 +1,4 @@
+pub mod crypto;
 pub mod randombytes;
 
 use std::mem::MaybeUninit;

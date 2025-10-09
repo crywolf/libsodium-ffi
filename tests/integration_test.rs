@@ -84,3 +84,21 @@ mod randombytes {
         assert_eq!(e, "Size exceeds buf capacity");
     }
 }
+
+mod auth {
+    use libsodium_ffi::crypto::auth::Auth;
+    use libsodium_ffi::Sodium;
+
+    #[test]
+    fn auth_and_verify() {
+        let s = Sodium::new().unwrap();
+        let key = s.auth_keygen();
+
+        let message = "test";
+        let mac = s.auth_mac(message.as_bytes(), &key).unwrap();
+
+        assert!(!s.auth_verify(&mac, "tests".as_bytes(), &key).unwrap());
+
+        assert!(s.auth_verify(&mac, message.as_bytes(), &key).unwrap());
+    }
+}
