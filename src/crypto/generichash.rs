@@ -101,7 +101,7 @@ impl<const L: usize> State<L> {
     }
 
     /// Each chunk of the complete message can then be sequentially processed by calling this method
-    pub fn crypto_generichash_update(&mut self, input: &[u8]) -> Result<(), String> {
+    pub fn generichash_update(&mut self, input: &[u8]) -> Result<(), String> {
         let res = unsafe {
             ffi::crypto_generichash_update(
                 self.state.0.as_mut_ptr() as _,
@@ -117,7 +117,7 @@ impl<const L: usize> State<L> {
     }
 
     /// Completes the operation and returns the final fingerprint
-    pub fn crypto_generichash_finalize(&mut self) -> Result<[u8; L], String> {
+    pub fn generichash_finalize(&mut self) -> Result<[u8; L], String> {
         let mut buf = MaybeUninit::<[u8; L]>::uninit();
         let res = unsafe {
             ffi::crypto_generichash_final(
@@ -183,14 +183,14 @@ mod tests {
     }
 
     #[test]
-    fn test_crypto_generichash_keygen() {
+    fn test_generichash_keygen() {
         let s = Sodium::new().unwrap();
         let key = s.generichash_keygen();
         assert_eq!(key.len(), KEYBYTES);
     }
 
     #[test]
-    fn test_crypto_generichash() {
+    fn test_generichash() {
         let s = Sodium::new().unwrap();
         let res = s.generichash_hash::<BYTES>(b"Some data to hash", None);
 
@@ -213,18 +213,17 @@ mod tests {
     }
 
     #[test]
-    fn test_crypto_generichash_streaming_api() {
+    fn test_generichash_streaming_api() {
         let s = Sodium::new().unwrap();
         let state = s.generichash_init::<BYTES>(None);
 
         let mut s = state.unwrap();
-        s.crypto_generichash_update(b"Arbitrary data to hash")
+        s.generichash_update(b"Arbitrary data to hash").unwrap();
+
+        s.generichash_update(b" with some ome other chunk data to hash")
             .unwrap();
 
-        s.crypto_generichash_update(b" with some ome other chunk data to hash")
-            .unwrap();
-
-        let out = s.crypto_generichash_finalize().unwrap();
+        let out = s.generichash_finalize().unwrap();
 
         let hash = hex::encode(out);
 

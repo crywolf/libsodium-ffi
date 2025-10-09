@@ -3,14 +3,14 @@ mod generichash {
     use libsodium_ffi::Sodium;
 
     #[test]
-    fn test_crypto_generichash_keygen() {
+    fn test_generichash_keygen() {
         let s = Sodium::new().unwrap();
         let key = s.generichash_keygen();
         assert_eq!(key.len(), KEYBYTES);
     }
 
     #[test]
-    fn test_crypto_generichash_without_key() {
+    fn test_generichash_without_key() {
         let s = Sodium::new().unwrap();
         let res = s.generichash_hash::<BYTES>(b"Arbitrary data to hash", None);
 
@@ -22,7 +22,7 @@ mod generichash {
     }
 
     #[test]
-    fn test_crypto_generichash_with_key() {
+    fn test_generichash_with_key() {
         let s = Sodium::new().unwrap();
         let key = b"some random key long enough";
         let res = s.generichash_hash::<BYTES>(b"Arbitrary data to hash", Some(key));
@@ -35,22 +35,20 @@ mod generichash {
     }
 
     #[test]
-    fn test_crypto_generichash_streaming_api() {
+    fn test_generichash_streaming_api() {
         let s = Sodium::new().unwrap();
         let key = b"some random key long enough";
         let state = s.generichash_init::<BYTES>(Some(key));
 
         let mut s = state.unwrap();
-        s.crypto_generichash_update(b"Arbitrary data to hash")
+        s.generichash_update(b"Arbitrary data to hash").unwrap();
+
+        s.generichash_update(b" with some ome other chunk data to hash")
             .unwrap();
 
-        s.crypto_generichash_update(b" with some ome other chunk data to hash")
-            .unwrap();
+        s.generichash_update(b" and some other stuff.").unwrap();
 
-        s.crypto_generichash_update(b" and some other stuff.")
-            .unwrap();
-
-        let out = s.crypto_generichash_finalize().unwrap();
+        let out = s.generichash_finalize().unwrap();
 
         let hash = hex::encode(out);
 
