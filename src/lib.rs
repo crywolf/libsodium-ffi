@@ -1,3 +1,5 @@
+pub mod randombytes;
+
 use std::mem::MaybeUninit;
 
 use libsodium_sys::ffi;
@@ -104,7 +106,7 @@ impl<const L: usize> State<L> {
         Ok(Self::default())
     }
 
-    /// Each chunk of the complete message can then be sequentially processed by calling
+    /// Each chunk of the complete message can then be sequentially processed by calling this method
     pub fn crypto_generichash_update(&mut self, input: &[u8]) -> Result<(), String> {
         let res = unsafe {
             ffi::crypto_generichash_update(

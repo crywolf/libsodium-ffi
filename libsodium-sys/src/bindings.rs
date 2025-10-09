@@ -64,3 +64,67 @@ extern "C" {
 extern "C" {
     pub fn crypto_generichash_keygen(k: *mut ::std::os::raw::c_uchar);
 }
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct randombytes_implementation {
+    pub implementation_name:
+        ::std::option::Option<unsafe extern "C" fn() -> *const ::std::os::raw::c_char>,
+    pub random: ::std::option::Option<unsafe extern "C" fn() -> u32>,
+    pub stir: ::std::option::Option<unsafe extern "C" fn()>,
+    pub uniform: ::std::option::Option<unsafe extern "C" fn(upper_bound: u32) -> u32>,
+    pub buf:
+        ::std::option::Option<unsafe extern "C" fn(buf: *mut ::std::os::raw::c_void, size: usize)>,
+    pub close: ::std::option::Option<unsafe extern "C" fn() -> ::std::os::raw::c_int>,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of randombytes_implementation"]
+        [::std::mem::size_of::<randombytes_implementation>() - 48usize];
+    ["Alignment of randombytes_implementation"]
+        [::std::mem::align_of::<randombytes_implementation>() - 8usize];
+    ["Offset of field: randombytes_implementation::implementation_name"]
+        [::std::mem::offset_of!(randombytes_implementation, implementation_name) - 0usize];
+    ["Offset of field: randombytes_implementation::random"]
+        [::std::mem::offset_of!(randombytes_implementation, random) - 8usize];
+    ["Offset of field: randombytes_implementation::stir"]
+        [::std::mem::offset_of!(randombytes_implementation, stir) - 16usize];
+    ["Offset of field: randombytes_implementation::uniform"]
+        [::std::mem::offset_of!(randombytes_implementation, uniform) - 24usize];
+    ["Offset of field: randombytes_implementation::buf"]
+        [::std::mem::offset_of!(randombytes_implementation, buf) - 32usize];
+    ["Offset of field: randombytes_implementation::close"]
+        [::std::mem::offset_of!(randombytes_implementation, close) - 40usize];
+};
+extern "C" {
+    pub fn randombytes_seedbytes() -> usize;
+}
+extern "C" {
+    pub fn randombytes_buf(buf: *mut ::std::os::raw::c_void, size: usize);
+}
+extern "C" {
+    pub fn randombytes_buf_deterministic(
+        buf: *mut ::std::os::raw::c_void,
+        size: usize,
+        seed: *const ::std::os::raw::c_uchar,
+    );
+}
+extern "C" {
+    pub fn randombytes_random() -> u32;
+}
+extern "C" {
+    pub fn randombytes_uniform(upper_bound: u32) -> u32;
+}
+extern "C" {
+    pub fn randombytes_stir();
+}
+extern "C" {
+    pub fn randombytes_close() -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn randombytes_set_implementation(
+        impl_: *const randombytes_implementation,
+    ) -> ::std::os::raw::c_int;
+}
+extern "C" {
+    pub fn randombytes_implementation_name() -> *const ::std::os::raw::c_char;
+}

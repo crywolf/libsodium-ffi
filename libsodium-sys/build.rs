@@ -22,6 +22,7 @@ fn main() {
         .allowlist_function("crypto_generichash_final")
         .allowlist_var("crypto_generichash_.*")
         .opaque_type("crypto_generichash_state")
+        .allowlist_function("randombytes_.*")
         // Tell cargo to invalidate the built crate whenever any of the included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         // Finish the builder and generate the bindings.
