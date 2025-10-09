@@ -1,17 +1,18 @@
-mod crypto_generichash {
-    use libsodium_ffi::{Sodium, BYTES, KEYBYTES};
+mod generichash {
+    use libsodium_ffi::crypto::generichash::{Generichash, BYTES, KEYBYTES};
+    use libsodium_ffi::Sodium;
 
     #[test]
     fn test_crypto_generichash_keygen() {
         let s = Sodium::new().unwrap();
-        let key = s.crypto_generichash_keygen();
+        let key = s.generichash_keygen();
         assert_eq!(key.len(), KEYBYTES);
     }
 
     #[test]
     fn test_crypto_generichash_without_key() {
         let s = Sodium::new().unwrap();
-        let res = s.crypto_generichash::<BYTES>(b"Arbitrary data to hash", None);
+        let res = s.generichash_hash::<BYTES>(b"Arbitrary data to hash", None);
 
         let hash = hex::encode(res.unwrap());
         assert_eq!(
@@ -24,7 +25,7 @@ mod crypto_generichash {
     fn test_crypto_generichash_with_key() {
         let s = Sodium::new().unwrap();
         let key = b"some random key long enough";
-        let res = s.crypto_generichash::<BYTES>(b"Arbitrary data to hash", Some(key));
+        let res = s.generichash_hash::<BYTES>(b"Arbitrary data to hash", Some(key));
 
         let hash = hex::encode(res.unwrap());
         assert_eq!(
@@ -37,7 +38,7 @@ mod crypto_generichash {
     fn test_crypto_generichash_streaming_api() {
         let s = Sodium::new().unwrap();
         let key = b"some random key long enough";
-        let state = s.crypto_generichash_init::<BYTES>(Some(key));
+        let state = s.generichash_init::<BYTES>(Some(key));
 
         let mut s = state.unwrap();
         s.crypto_generichash_update(b"Arbitrary data to hash")
